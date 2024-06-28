@@ -2,29 +2,28 @@
     <div class="common-layout">
         <el-container>
             <!-- 左侧部分 -->
-            <el-aside width="38vh">
-                <div class="test-button">
-                    <button @click="SocketConnect">socket connect</button>
-                    <button @click="SocketDisconnect">socket disconnect</button>
-                    <button @click="GetData">华为云测试</button>
+            <el-aside width="40vh" style="margin-top: 0%;">
+                <div class="car-tag">
+                    <el-tag size="small">car1</el-tag>
+                    <el-tag type="success" size="small">car2</el-tag>
+                    <el-tag type="info" size="small">car3</el-tag>
                 </div>
                 <div class="timeline-container">
                     <el-timeline class="timeline">
-                        <el-timeline-item v-for="(activity, index) in activities" :key="index"
+                        <el-timeline-item v-for="(activity, index) in activities1" :key="index"
                             :timestamp="activity.timestamp">
                             {{ activity.content }}</el-timeline-item>
                     </el-timeline>
                     <el-timeline class="timeline">
-                        <el-timeline-item v-for="(activity, index) in activities" :key="index"
+                        <el-timeline-item v-for="(activity, index) in activities2" :key="index"
                             :timestamp="activity.timestamp">
                             {{ activity.content }}</el-timeline-item>
                     </el-timeline>
                     <el-timeline class="timeline">
-                        <el-timeline-item v-for="(activity, index) in activities" :key="index"
+                        <el-timeline-item v-for="(activity, index) in activities3" :key="index"
                             :timestamp="activity.timestamp">
                             {{ activity.content }}</el-timeline-item>
                     </el-timeline>
-
                 </div>
                 <div class="box-card">
                     <el-card>
@@ -38,23 +37,29 @@
                             <el-table :data="car_status">
                                 <el-table-column prop="car_id" label="车辆编号"></el-table-column>
                                 <el-table-column prop="PassengerNum" label="载客量"></el-table-column>
-                                <el-table-column prop="TravlledDistance" label="行驶里程"></el-table-column>
+                                <el-table-column prop="TravlledDistance" label="行驶里程/m"></el-table-column>
                             </el-table>
                         </div>
                     </el-card>
                 </div>
                 <div id="gdmap" style="width: 100%;height: 40vh;position: relative;"></div>
-                <p>{{ real_location }}</p>
+                <div class="test-button">
+                    <button @click="SocketConnect">connect</button>
+                    <button @click="test">connect</button>
+                    <button @click="SocketDisconnect">disconnect</button>
+                    <!-- <button @click="open1">插入1</button> -->
+                    <!-- <button @click="insert2">插入2</button> -->
+                </div>
             </el-aside>
             <!-- 主体地图部分 -->
-            <el-container style="padding-top: 0%;height: 100vh;">
+            <el-container style="padding-top: 0%;height: 98vh;">
                 <el-main>
                     <div id="allmap" style="width: 100%;height: 100%;position: relative;"></div>
                 </el-main>
                 <!-- 底部时间轴 -->
                 <el-footer>
                     <el-progress :percentage="percentage" :stroke-width="12" striped striped-flow>
-                        <span>time</span>
+                        <span>{{ real_time }}</span>
                     </el-progress>
                 </el-footer>
             </el-container>
@@ -63,15 +68,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, h } from 'vue'
 import { RodeArray, PointSets, MarkerSets, LabelSets } from "../points.js"
-import { getPoints, GetSteps, DriveCar } from "../tools.js"
+import { getPoints, GetSteps, DriveCar, ComputeRotation, MoveMapCenter } from "../tools.js"
+import { ElNotification, ElMessage } from 'element-plus'
 import axios from 'axios'
 import styleJson from '/src/assets/map_style2.json'
 import io from 'socket.io-client'
 
-const percentage = ref(10)
-const real_location = ref(0)
+const percentage = ref(0)
+const real_time = ref("7:20:00")
 var huawei_token = ""
 
 var socket = null
@@ -79,71 +85,13 @@ var map = null
 var gdmap = null
 var marker_gd = null
 var passedPolyline = null
-var lushu = null
-//创建规划对象
-var routeArray1 = null   //全部中间节点
-var stepArray1 = null    //step对象数组
-var flag1 = false
-//创建规划对象
-var routeArray2 = null   //全部中间节点
-var stepArray2 = null    //step对象数组
-var flag2 = false
+var MarkerCar_01 = null
+var MarkerCar_02 = null
+var MarkerCar_03 = null
+var insert1_flag = true
+var insert2_flag = true
 
-const SocketConnect = () => {
-    var icon = new BMapGL.Icon("src/assets/bus1.png", new BMapGL.Size(25, 25))
-    var MarkerCar = new BMapGL.Marker(PointSets[0], { icon: icon });
-    map.addOverlay(MarkerCar)
-    socket = io("http://localhost:5000/")
-    socket.on('connect', () => {
-        console.log('websocket connected...')
-    })
-    socket.on('send_message', (res) => {
-        var temp_array = res.location_array
-        var temp_array_gd = res.location_array_amap
-        car_status.value[0].PassengerNum = res.PassengerNum
-        console.log(res)
-        var duration_gd = 500
-        var waitTime = (temp_array_gd.length / 2 * 500) | 0
-        marker_gd.moveAlong(temp_array_gd, {
-            //每一段的时长
-            duration: duration_gd,
-            autoRotation: true,
-        })
-        //车辆运行一半时间后，开始cover乘客图标
-        setTimeout(() => {
-            var passengerMarker = new AMap.Marker({
-                map: gdmap,
-                position: temp_array_gd[temp_array_gd.length - 1],
-                icon: new AMap.Icon({
-                    size: new AMap.Size(32, 32),
-                    image: "/src/assets/person.png",
-                    imageSize: new AMap.Size(32, 32),
-                    imageOffset: new AMap.Pixel(0, 0),
-                })
-            })
-            gdmap.add(passengerMarker)
-            setTimeout(() => {
-                gdmap.remove(passengerMarker)
-            }, waitTime + 600);
-        }, waitTime);
 
-    })
-    socket.on('send_location', (res) => {
-        // console.log(res)
-        let prevPoint = MarkerCar.getPosition()
-        let lng = res[0], lat = res[1]
-        let tempPoint = new BMapGL.Point(lng, lat)
-        let patharray = getPoints(prevPoint, tempPoint, 10)
-        let index = 1, length = patharray.length
-        let smoothTimer = setInterval(() => {
-            if (index >= length) {
-                clearInterval(smoothTimer)
-                MarkerCar.setPosition(tempPoint)
-            }
-            if (index < length - 1) MarkerCar.setPosition(patharray[index++])
-        }, 56);
-    })
-}
 const SocketDisconnect = () => {
     if (socket) {
         socket.disconnect()
@@ -151,68 +99,404 @@ const SocketDisconnect = () => {
     console.log('websocket disconnected...')
 }
 
-var activities = [
-    {
-        content: '接到一位乘客',
-        timestamp: '7:30',
-    },
-    {
-        content: '一位乘客下车',
-        timestamp: '7:38',
-    },
-    {
-        content: '一位乘客下车',
-        timestamp: '7:41',
-    },
-]
+const activities1 = ref([
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+])
+const activities2 = ref([
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+])
+const activities3 = ref([
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+    { content: '...\n...', timestamp: '7:20:00', },
+])
 const car_status = ref([
-    { car_id: "car_01", PassengerNum: 0, TravlledDistance: 100 },
-    { car_id: "car_02", PassengerNum: 0, TravlledDistance: 100 },
-    { car_id: "car_03", PassengerNum: 0, TravlledDistance: 100 },
+    { car_id: "car_01", PassengerNum: 0, TravlledDistance: 0 },
+    { car_id: "car_02", PassengerNum: 0, TravlledDistance: 0 },
+    { car_id: "car_03", PassengerNum: 0, TravlledDistance: 0 },
 ])
 
-/****************执行路径*******************/
-const GetRiding1 = () => {
-    //注意！路径规划是异步执行的，所以逻辑需要在回调中实现
-    const walking1 = new BMapGL.WalkingRoute(map, {
-        onSearchComplete: (res) => {
-            let routes = res.getPlan(0)._routes[0]
-            //获取关键转弯点
-            stepArray1 = routes._steps
-            //获取全部中间点
-            routeArray1 = routes._points
-            //百度api的数据获取完成，阔以开始运动了
-            flag1 = true
+const test = () => {
+    let text = 'aaaa';
+    ElMessage({
+        message: h('p', { style: { fontSize: '30px' } }, [
+            h('span', null, "一个实时订单被分配给了"),
+            h("i", { style: 'color: teal' }, text)
+        ]),
+        type: 'warning',
+        offset: 600,
+        center: true,
+        duration: 8000,
+    })
+}
+
+const SocketConnect = () => {
+    socket = io("http://localhost:5000/")
+    socket.on('connect', () => {
+        console.log('websocket connected...')
+    })
+    socket.on('send_message_carLoad', (res) => {
+        var carId = res.car_id
+        if (carId == 1) {
+            //更新园区状态表
+            car_status.value[1 - 1].PassengerNum = res.PassengerNum
+            if (res.various_num != 0) {
+                //更新时间轴窗口
+                let text = null
+                if (res.type == "get_out_car")
+                    text = `下车${-res.various_num}位乘客`
+                else
+                    text = `上车${res.various_num}位乘客`
+                let temp_activity = []
+                temp_activity.push(activities1.value[1])
+                temp_activity.push(activities1.value[2])
+                temp_activity.push(activities1.value[3])
+                temp_activity.push({ content: text, timestamp: res.time_stamp })
+                activities1.value = temp_activity
+                //标注车辆图标事件
+                let temp_label = new BMapGL.Label("1号车辆: " + text)
+                temp_label.setStyle({
+                    color: '#000',
+                    fontSize: '20px',
+                    border: '2px solid #1E90FF'
+                })
+                if (MarkerCar_01.getLabel())
+                    MarkerCar_01.getLabel().remove()
+                MarkerCar_01.setLabel(temp_label)
+                setTimeout(() => {
+                    if (MarkerCar_01.getLabel())
+                        MarkerCar_01.getLabel().remove()
+                }, 500);
+            }
+        }
+        else if (carId == 2) {
+            //更新园区状态表
+            car_status.value[2 - 1].PassengerNum = res.PassengerNum
+            if (res.various_num != 0) {
+                //更新时间轴窗口
+                let text = null
+                if (res.type == "get_out_car")
+                    text = `下车${-res.various_num}位乘客`
+                else
+                    text = `上车${res.various_num}位乘客`
+                let temp_activity = []
+                temp_activity.push(activities2.value[1])
+                temp_activity.push(activities2.value[2])
+                temp_activity.push(activities2.value[3])
+                temp_activity.push({ content: text, timestamp: res.time_stamp })
+                activities2.value = temp_activity
+                //标注车辆图标事件
+                let temp_label = new BMapGL.Label("2号车辆: " + text)
+                temp_label.setStyle({
+                    color: '#000',
+                    fontSize: '20px',
+                    border: '2px solid #1E90FF'
+                })
+                if (MarkerCar_02.getLabel())
+                    MarkerCar_02.getLabel().remove()
+                MarkerCar_02.setLabel(temp_label)
+                setTimeout(() => {
+                    if (MarkerCar_02.getLabel())
+                        MarkerCar_02.getLabel().remove()
+                }, 500);
+            }
+
+        }
+        else {
+            //更新园区状态表
+            car_status.value[3 - 1].PassengerNum = res.PassengerNum
+            if (res.various_num != 0) {
+                //更新时间轴窗口
+                let text = null
+                if (res.type == "get_out_car")
+                    text = `下车${-res.various_num}位乘客`
+                else
+                    text = `上车${res.various_num}位乘客`
+                let temp_activity = []
+                temp_activity.push(activities3.value[1])
+                temp_activity.push(activities3.value[2])
+                temp_activity.push(activities3.value[3])
+                temp_activity.push({ content: text, timestamp: res.time_stamp })
+                activities3.value = temp_activity
+                //标注车辆图标事件
+                let temp_label = new BMapGL.Label("3号车辆: " + text)
+                temp_label.setStyle({
+                    color: '#000',
+                    fontSize: '20px',
+                    border: '2px solid #1E90FF'
+                })
+                if (MarkerCar_03.getLabel())
+                    MarkerCar_03.getLabel().remove()
+                MarkerCar_03.setLabel(temp_label)
+                setTimeout(() => {
+                    if (MarkerCar_03.getLabel())
+                        MarkerCar_03.getLabel().remove()
+                }, 500);
+            }
         }
     })
-    var start = PointSets[2];
-    var end = PointSets[9];
-    walking1.search(start, end);
-    let stepPoints = []
-    if (flag1) {
-        console.log(stepArray1)
-        let speed = 50; //速度   m/s
-        let freq = 5;   //点频率 点/s
-        let distribution = Math.round(speed / freq)  //点分布 m/点
-        /*************获取路径点********************/
-        stepPoints = GetSteps(stepArray1, distribution, start, end)
-        console.log(stepPoints)
-        //获取路径点后，运行车辆
-        DriveCar(stepPoints, 1, map, freq)
-    }
+    //定时捕获地图中心位置
+    setInterval(() => {
+        let mapCenter = MoveMapCenter(MarkerCar_01, MarkerCar_02, MarkerCar_03)
+        map.setCenter(mapCenter)
+    }, 3500);
+    //用于展示单车运行视角 && 实现乘客上下车效果
+    socket.on('send_message', (res) => {
+        var temp_array = res.location_array
+        var temp_array_gd = res.location_array_amap
+        var carId = res.car_id
+        var waitTime = (temp_array_gd.length / 2 * 500) | 0
+        var deta_distance = res.distance / (temp_array_gd.length + 1)
+        console.log(res)
+        if (carId == 1) {
+            //展示单车运行视角
+            var duration_gd = 500//每一小段路程耗时
+            //高德地图的小车移动
+            marker_gd.moveAlong(temp_array_gd, {
+                //每一段的时长
+                duration: duration_gd,
+                autoRotation: true,
+            })
+            car_status.value[1 - 1].PassengerNum = res.PassengerNum//更新本小车的载客量
+            //实时估算更新车辆已行驶里程
+            var distance_cnt = 0
+            var Distance_Timer = setInterval(() => {
+                if (distance_cnt < temp_array_gd.length) {
+                    car_status.value[1 - 1].TravlledDistance += deta_distance//本段路径没结束，就按照设置的速度增加路程，实际与小车运动并无关系，二者通过定时器保持接近同步
+                    car_status.value[1 - 1].TravlledDistance |= 0
+                    distance_cnt++
+                }
+                if (distance_cnt >= temp_array_gd.length) {
+                    clearInterval(Distance_Timer)
+                }
+            }, 500);
+            //更新多车大地图图标位置
+            //百度地图
+            MarkerCar_01.setPosition(new BMapGL.Point(temp_array[0][0], temp_array[0][1]))
+        }
+        else if (carId == 2) {
+            car_status.value[2 - 1].PassengerNum = res.PassengerNum
+            //实时估算更新车辆已行驶里程
+            var distance_cnt = 0
+            var Distance_Timer = setInterval(() => {
+                if (distance_cnt < temp_array_gd.length) {
+                    car_status.value[2 - 1].TravlledDistance += deta_distance
+                    car_status.value[2 - 1].TravlledDistance |= 0
+                    distance_cnt++
+                }
+                if (distance_cnt >= temp_array_gd.length) {
+                    clearInterval(Distance_Timer)
+                }
+            }, 500);
+            //更新多车大地图图标位置
+            MarkerCar_02.setPosition(new BMapGL.Point(temp_array[0][0], temp_array[0][1]))
+        }
+        else {
+            car_status.value[3 - 1].PassengerNum = res.PassengerNum
+            //实时估算更新车辆已行驶里程  
+            var distance_cnt = 0
+            var Distance_Timer = setInterval(() => {
+                if (distance_cnt < temp_array_gd.length) {
+                    car_status.value[3 - 1].TravlledDistance += deta_distance
+                    car_status.value[3 - 1].TravlledDistance |= 0
+                    distance_cnt++
+                }
+                if (distance_cnt >= temp_array_gd.length) {
+                    clearInterval(Distance_Timer)
+                }
+            }, 500);
+            //更新多车大地图图标位置
+            MarkerCar_03.setPosition(new BMapGL.Point(temp_array[0][0], temp_array[0][1]))
+        }
+        //车辆运行一半时间后，开始cover乘客图标
+        setTimeout(() => {
+            //单车地图cover图标
+            if (carId == 1) {
+                var passengerMarker = new AMap.Marker({
+                    map: gdmap,
+                    position: temp_array_gd[temp_array_gd.length - 1],
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(32, 32),
+                        image: "/src/assets/person.png",
+                        // image: "/src/assets/passenger.png",
+                        imageSize: new AMap.Size(32, 32),
+                        imageOffset: new AMap.Pixel(0, 0),
+                    })
+                })
+                gdmap.add(passengerMarker)
+                //设置定时器，让乘客图标闪烁（高德地图）
+                var showFlag = true
+                var Marker_Timer_gd = setInterval(() => {
+                    if (showFlag) {
+                        passengerMarker.hide()
+                        showFlag = false
+                    }
+                    else {
+                        passengerMarker.show()
+                        showFlag = true
+                    }
+                }, 400);
+                //车辆到达目的地后，清除乘客图标 & 闪烁效果定时器
+                setTimeout(() => {
+                    clearInterval(Marker_Timer_gd)
+                    gdmap.remove(passengerMarker)
+                }, waitTime + 600);
+            }
+            //多车大地图cover图标（百度地图）
+            var passengerMarker_baidu = new BMapGL.Marker(
+                new BMapGL.Point(temp_array[temp_array.length - 1][0], temp_array[temp_array.length - 1][1]),
+                {
+                    icon: new BMapGL.Icon("/src/assets/person.png", new BMapGL.Size(32, 32)),
+                    // icon: new BMapGL.Icon("/src/assets/passenger.png", new BMapGL.Size(32, 32)),
+                })
+            map.addOverlay(passengerMarker_baidu)
+            //设置定时器，让乘客图标闪烁
+            var showFlag_baidu = true
+            var Marker_Timer_baidu = setInterval(() => {
+                if (showFlag_baidu) {
+                    passengerMarker_baidu.hide()
+                    showFlag_baidu = false
+                }
+                else {
+                    passengerMarker_baidu.show()
+                    showFlag_baidu = true
+                }
+            }, 400);
+            //车辆到达目的地后，清除乘客图标 & 闪烁效果
+            setTimeout(() => {
+                clearInterval(Marker_Timer_baidu)
+                map.removeOverlay(passengerMarker_baidu)
+            }, waitTime + 600);
+        }, waitTime);
+
+    })
+    socket.on('send_message_realtimeDemand', (res) => {
+        let carId = res.car_id;
+        let origin_point = PointSets[res.originId];
+        let dest_point = PointSets[res.destId];
+        let origin_passenger = new BMapGL.Marker(
+            origin_point,
+            {
+                icon: new BMapGL.Icon("src/assets/passenger.png", new BMapGL.Size(42, 42)),
+            }
+        );
+        let dest_passenger = new BMapGL.Marker(
+            dest_point,
+            {
+                icon: new BMapGL.Icon("src/assets/passenger.png", new BMapGL.Size(42, 42)),
+            }
+        );
+        map.addOverlay(origin_passenger);
+        map.addOverlay(dest_passenger);
+        // 设置定时器让图标闪烁
+        let IsPassengerShow = true;
+        let passengerTimer = setInterval(() => {
+            if (IsPassengerShow) {
+                origin_passenger.hide();
+                dest_passenger.hide();
+                IsPassengerShow = false;
+            }
+            else {
+                origin_passenger.show();
+                dest_passenger.show();
+                IsPassengerShow = true;
+            }
+        }, 400)
+        // 闪烁4s后消失
+        setTimeout(() => {
+            clearInterval(passengerTimer);
+            map.removeOverlay(origin_passenger);
+            map.removeOverlay(dest_passenger);
+        }, 4000)
+        let message = `${carId}号小车`;
+        ElMessage({
+            message: h('p', { style: { fontSize: '30px' } }, [
+                h('span', null, "一个实时订单被分配给了"),
+                h("i", { style: 'color: teal' }, message)
+            ]),
+            type: 'warning',
+            offset: 600,
+            center: true,
+            duration: 8000,
+        })
+    })
+    socket.on('send_message_location', (res) => {
+        let prevPoint = null
+        let carId = res.car_id
+        let lng = res.location[0], lat = res.location[1]
+        let tempPoint = new BMapGL.Point(lng, lat)
+        if (carId == 1) {
+            //刷新时间轴
+            real_time.value = res.system_time
+            percentage.value = (res.system_ConvertedTime / 40) * 100
+            //线性插值实现小车平滑移动
+            prevPoint = MarkerCar_01.getPosition();
+            // MarkerCar_01.setRotation(ComputeRotation(prevPoint, tempPoint, map))
+            let patharray = getPoints(prevPoint, tempPoint, 7)
+            let index = 0, length = patharray.length
+            let smoothTimer = setInterval(() => {
+                if (index >= length) {
+                    clearInterval(smoothTimer)
+                    // MarkerCar_01.setPosition(tempPoint)
+                }
+                else if (index <= length - 1) MarkerCar_01.setPosition(patharray[index++])
+            }, 60);
+        }
+        else if (carId == 2) {
+            //刷新时间轴
+            real_time.value = res.system_time
+            percentage.value = (res.system_ConvertedTime / 40) * 100
+            //线性插值实现小车平滑移动
+            prevPoint = MarkerCar_02.getPosition();
+            // MarkerCar_02.setRotation(ComputeRotation(prevPoint, tempPoint, map))
+            let patharray = getPoints(prevPoint, tempPoint, 7)
+            let index = 1, length = patharray.length
+            let smoothTimer = setInterval(() => {
+                if (index >= length) {
+                    clearInterval(smoothTimer)
+                    // MarkerCar_02.setPosition(tempPoint)
+                }
+                if (index <= length - 1) MarkerCar_02.setPosition(patharray[index++])
+            }, 65);
+        }
+        else {
+            //刷新时间轴
+            real_time.value = res.system_time
+            percentage.value = (res.system_ConvertedTime / 40) * 100
+            //线性插值实现小车平滑移动
+            prevPoint = MarkerCar_03.getPosition();
+            // MarkerCar_03.setRotation(ComputeRotation(prevPoint, tempPoint, map))
+            let patharray = getPoints(prevPoint, tempPoint, 7)
+            let index = 1, length = patharray.length
+            let smoothTimer = setInterval(() => {
+                if (index >= length) {
+                    clearInterval(smoothTimer)
+                    // MarkerCar_03.setPosition(tempPoint)
+                }
+                if (index <= length - 1) MarkerCar_03.setPosition(patharray[index++])
+            }, 65);
+        }
+    })
 }
+
 /*************初始化页面*********** */
 onMounted(() => {
     //初始化地图
     map = new BMapGL.Map("allmap")
     map.enableScrollWheelZoom();
-    map.centerAndZoom(new BMapGL.Point(118.965069, 32.120852), 19);
+    map.centerAndZoom(new BMapGL.Point(118.965069, 32.120852), 18);
     map.setMapStyleV2({
-        // styleId:"a480e565a09dfa2adfdbeb6622602504"
         styleJson: styleJson
     })
     map.setHeading(108);
-    map.setTilt(34);
+    map.setTilt(46);
     // //显示点标记
     // for (let marker of MarkerSets) {
     //     map.addOverlay(marker);
@@ -221,7 +505,7 @@ onMounted(() => {
     for (let label of LabelSets) {
         map.addOverlay(label);
     }
-
+    //高德地图初始化
     gdmap = new AMap.Map("gdmap", {
         resizeEnable: true,
         center: [118.951742391866, 32.123405409006],
@@ -239,19 +523,21 @@ onMounted(() => {
         strokeWeight: 6, //线宽
     });
     let icon_gd = new AMap.Icon({
-        size: new AMap.Size(26, 52),
-        image: "https://a.amap.com/jsapi_demos/static/demo-center-v2/car.png",
-        imageSize: new AMap.Size(26, 52),
+        size: new AMap.Size(32, 58),
+        // image: "https://a.amap.com/jsapi_demos/static/demo-center-v2/car.png",
+        image: "src/assets/car.png",
+        imageSize: new AMap.Size(32, 58),
         imageOffset: new AMap.Pixel(0, 0),
     })
     marker_gd = new AMap.Marker({
         map: gdmap,
-        // position: new AMap.LngLat(118.951742391866,32.123405409006),
         position: [118.951742391866, 32.123405409006],
         icon: icon_gd,
         offset: new AMap.Pixel(-13, -26),
+        angle: -30,
     });
     gdmap.add(marker_gd)
+    //高德地图中心点跟随小车移动
     marker_gd.on('moving', function (e) {
         passedPolyline.setPath(e.passedPath);
         // 设置地图中心点
@@ -264,6 +550,18 @@ onMounted(() => {
     AMap.plugin('AMap.MoveAnimation', () => {
         console.log("动画插件加载完毕")
     })
+    MarkerCar_01 = new BMapGL.Marker(PointSets[0], {
+        icon: new BMapGL.Icon("src/assets/bus1.png", new BMapGL.Size(42, 42)),
+    });
+    MarkerCar_02 = new BMapGL.Marker(PointSets[0], {
+        icon: new BMapGL.Icon("src/assets/bus2.png", new BMapGL.Size(38, 38))
+    });
+    MarkerCar_03 = new BMapGL.Marker(PointSets[0], {
+        icon: new BMapGL.Icon("src/assets/bus3.png", new BMapGL.Size(64, 64))
+    });
+    map.addOverlay(MarkerCar_01)
+    map.addOverlay(MarkerCar_02)
+    map.addOverlay(MarkerCar_03)
 })
 </script>
 
@@ -276,22 +574,49 @@ onMounted(() => {
     /* overflow: hidden; */
 }
 
+/* < !--去掉文字 --> */
+.BMap_cpyCtrl {
+    display: none;
+}
+
+/* < !--去掉LOGO --> */
+.anchorBL {
+    display: none;
+}
+
+.amap-logo {
+    display: none;
+    opacity: 0 !important;
+}
+
+.amap-copyright {
+    opacity: 0;
+}
+
+.car-tag {
+    display: flex;
+    justify-content: space-between;
+    margin-left: 15%;
+    margin-right: 6%;
+    margin-top: 0;
+}
+
 .test-button {
-    padding-bottom: 5vh;
+    padding-bottom: 1vh;
 }
 
 .timeline-container {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    grid-gap: 10px;
+    grid-template-columns: repeat(3, 1fr);
+    /* grid-template-rows: repeat(2, 1fr); */
+    grid-gap: 8px;
     max-height: 70vh;
     overflow: auto;
 }
 
 .timeline {
     /* border: 1px solid #ccc; */
-    padding: 4px;
+    padding: 3px;
 
 }
 
