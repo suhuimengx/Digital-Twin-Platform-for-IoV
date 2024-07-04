@@ -1,31 +1,51 @@
 <template>
     <div class="common-layout">
-        <el-container>
-            <!-- 左侧部分 -->
-            <el-aside width="40vh" style="margin-top: 0%;">
-                <div class="car-tag">
-                    <el-tag size="small">car1</el-tag>
-                    <el-tag type="success" size="small">car2</el-tag>
-                    <el-tag type="info" size="small">car3</el-tag>
+        
+        <el-container class="maincontent">
+            <div class="page-title" v-if="IsShow">
+            <text style="color:#19ECFF;text-align: center;font-size: large;">数字孪生平台</text>
+            </div>
+            <div class="message-container"> 
+
+                    <div class="car-tag">
+                        <el-tag size="small">car1</el-tag>
+                        <el-tag type="success" size="small">car2</el-tag>
+                        <el-tag type="info" size="small">car3</el-tag>
+                    </div>
+                    <div class="timeline-container">
+                        <el-timeline class="timeline">
+                            <el-timeline-item v-for="(activity, index) in activities1" :key="index"
+                                :timestamp="activity.timestamp">
+                                {{ activity.content }}</el-timeline-item>
+                        </el-timeline>
+                        <el-timeline class="timeline">
+                            <el-timeline-item v-for="(activity, index) in activities2" :key="index"
+                                :timestamp="activity.timestamp">
+                                {{ activity.content }}</el-timeline-item>
+                        </el-timeline>
+                        <el-timeline class="timeline">
+                            <el-timeline-item v-for="(activity, index) in activities3" :key="index"
+                                :timestamp="activity.timestamp">
+                                {{ activity.content }}</el-timeline-item>
+                        </el-timeline>
+                    </div>
+            </div>
+            <div class="gdmap-container">    
+                <div id="gdmap" style="width: 100%;height: 30vh;position: relative;"></div>
+                <div class="test-button">
+                    <button @click="SocketConnect">connect</button>
+                    <button @click="test">connect</button>
+                    <button @click="SocketDisconnect">disconnect</button>
+                    <!-- <button @click="open1">插入1</button> -->
+                    <!-- <button @click="insert2">插入2</button> -->
                 </div>
-                <div class="timeline-container">
-                    <el-timeline class="timeline">
-                        <el-timeline-item v-for="(activity, index) in activities1" :key="index"
-                            :timestamp="activity.timestamp">
-                            {{ activity.content }}</el-timeline-item>
-                    </el-timeline>
-                    <el-timeline class="timeline">
-                        <el-timeline-item v-for="(activity, index) in activities2" :key="index"
-                            :timestamp="activity.timestamp">
-                            {{ activity.content }}</el-timeline-item>
-                    </el-timeline>
-                    <el-timeline class="timeline">
-                        <el-timeline-item v-for="(activity, index) in activities3" :key="index"
-                            :timestamp="activity.timestamp">
-                            {{ activity.content }}</el-timeline-item>
-                    </el-timeline>
-                </div>
-                <div class="box-card">
+            </div>
+            <!-- 左侧部分 
+            <el-aside v-if="IsShow" width="40vh"  class="hover-aside" style="margin-top: 0%;">
+                
+
+            </el-aside>-->
+            <div class="box-card">
                     <el-card>
                         <template #header>
                             <div class="card-header">
@@ -42,18 +62,9 @@
                         </div>
                     </el-card>
                 </div>
-                <div id="gdmap" style="width: 100%;height: 40vh;position: relative;"></div>
-                <div class="test-button">
-                    <button @click="SocketConnect">connect</button>
-                    <button @click="test">connect</button>
-                    <button @click="SocketDisconnect">disconnect</button>
-                    <!-- <button @click="open1">插入1</button> -->
-                    <!-- <button @click="insert2">插入2</button> -->
-                </div>
-            </el-aside>
             <!-- 主体地图部分 -->
             <el-container style="padding-top: 0%;height: 98vh;">
-                <el-main>
+                <el-main style="width: 100%;height: 100%;padding: 0%;margin: 0%">
                     <div id="allmap" style="width: 100%;height: 100%;position: relative;"></div>
                 </el-main>
                 <!-- 底部时间轴 -->
@@ -61,6 +72,9 @@
                     <el-progress :percentage="percentage" :stroke-width="12" striped striped-flow>
                         <span>{{ real_time }}</span>
                     </el-progress>
+                    <el-button class="toggle-button" @click="toggleVisibility">
+                        {{ isHidden ? '显示所有内容' : '隐藏所有内容' }}
+                    </el-button>
                 </el-footer>
             </el-container>
         </el-container>
@@ -73,7 +87,7 @@ import { RodeArray, PointSets, MarkerSets, LabelSets } from "../points.js"
 import { getPoints, GetSteps, DriveCar, ComputeRotation, MoveMapCenter } from "../tools.js"
 import { ElNotification, ElMessage } from 'element-plus'
 import axios from 'axios'
-import styleJson from '/src/assets/map_style2.json'
+import styleJson from '/src/assets/map_style3.json'
 import io from 'socket.io-client'
 
 const percentage = ref(0)
@@ -91,6 +105,8 @@ var MarkerCar_03 = null
 var insert1_flag = true
 var insert2_flag = true
 
+
+const IsShow = ref(true)
 
 const SocketDisconnect = () => {
     if (socket) {
@@ -122,6 +138,10 @@ const car_status = ref([
     { car_id: "car_02", PassengerNum: 0, TravlledDistance: 0 },
     { car_id: "car_03", PassengerNum: 0, TravlledDistance: 0 },
 ])
+
+const toggleVisibility = () => {
+    IsShow.value = !IsShow.value;
+}
 
 const test = () => {
     let text = 'aaaa';
@@ -566,6 +586,7 @@ onMounted(() => {
 </script>
 
 <style>
+
 #allmap {
     width: 100%;
     height: 100%;
@@ -573,7 +594,6 @@ onMounted(() => {
     z-index: 10;
     /* overflow: hidden; */
 }
-
 /* < !--去掉文字 --> */
 .BMap_cpyCtrl {
     display: none;
@@ -593,6 +613,10 @@ onMounted(() => {
     opacity: 0;
 }
 
+.common-layout {
+    width: 100%;
+    height: 100%;
+}
 .car-tag {
     display: flex;
     justify-content: space-between;
@@ -604,6 +628,40 @@ onMounted(() => {
 .test-button {
     padding-bottom: 1vh;
 }
+.maincontent {
+    margin: 0%;
+    padding: 0%;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.hover-aside {
+  position: absolute;
+  top: 0;
+  left: 50;
+  width: 40vh;
+  height: 100%;
+  background-color: #080909; /* 半透明背景 */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+  opacity: 0.8
+}
+.page-title {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    background-image: url("B:/HikingNiNanbase/src/assets/title.png");
+    background-size: 100%,100%;
+    background-repeat: no-repeat;
+    padding: 0%;
+    height: 5vh;
+    width: 100%;
+}
 
 .timeline-container {
     display: grid;
@@ -612,7 +670,8 @@ onMounted(() => {
     grid-gap: 8px;
     max-height: 70vh;
     overflow: auto;
-}
+    
+}   
 
 .timeline {
     /* border: 1px solid #ccc; */
@@ -628,5 +687,29 @@ onMounted(() => {
 .card-content {
     font-size: 14px;
     margin-bottom: 1vh;
+}
+.box-card {
+    position: absolute;
+    bottom: 20vh;
+    right: 3vh;
+    z-index: 999;
+    background-image: url('src/assets/vertical_text.png');
+    
+}
+.message-container {
+    position: absolute;
+    padding: 2%;
+    width: 52vh;
+    bottom: 5vh;
+    left: 3vh;
+    z-index: 999;
+    background-image: url('src/assets/bg-line.png');
+    background-size:cover;
+}
+.gdmap-container {
+    position: absolute;
+    top: 20vh;
+    right: 3vh;
+    z-index: 999;
 }
 </style>
