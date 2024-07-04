@@ -3,10 +3,12 @@
         
         <el-container class="maincontent">
             <div class="page-title" v-if="IsShow">
-            <text style="color:#19ECFF;text-align: center;font-size: large;">数字孪生平台</text>
+            <text class="title-text" >智慧校园数字孪生平台</text>
             </div>
             <div class="message-container"> 
-
+                    <div class="card-header">
+                        <text style="text-align: left;font-size: medium;color: #32C5FF">事件信息</text>
+                    </div>
                     <div class="car-tag">
                         <el-tag size="small">car1</el-tag>
                         <el-tag type="success" size="small">car2</el-tag>
@@ -30,7 +32,10 @@
                         </el-timeline>
                     </div>
             </div>
-            <div class="gdmap-container">    
+            <div class="gdmap-container">
+                <div class="card-header">
+                        <text style="text-align: left;font-size: medium;color: #32C5FF">司乘共显视角</text>
+                </div>
                 <div id="gdmap" style="width: 100%;height: 30vh;position: relative;"></div>
                 <div class="test-button">
                     <button @click="SocketConnect">connect</button>
@@ -44,13 +49,13 @@
             <el-aside v-if="IsShow" width="40vh"  class="hover-aside" style="margin-top: 0%;">
                 
 
-            </el-aside>-->
+            </el-aside>
             <div class="box-card">
                     <el-card>
                         <template #header>
                             <div class="card-header">
                                 <span>智慧园区车辆状态</span>
-                                <!-- <el-button class="button" text>Operation button</el-button> -->
+                               
                             </div>
                         </template>
                         <div>
@@ -62,6 +67,34 @@
                         </div>
                     </el-card>
                 </div>
+                -->
+            <div class="box-card">
+                <div class="v-card">
+                    <div>
+                        <div class="card-header">
+                        <text style="text-align: left;font-size: medium;color: #32C5FF">智慧园区车辆状态</text>
+                        </div>
+                    </div>
+                    <v-card-text style="width: 100%;">
+                        <table class="custom-table" style="width: 100%;">
+                            <thead>
+                            <tr>
+                                <th style="color: #19ECFF;">车辆编号</th>
+                                <th style="color: #19ECFF;">载客量</th>
+                                <th style="color: #19ECFF;">行驶里程/m</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr v-for="item in car_status" :key="item.car_id">
+                                <td style="color: #FFC814;">{{ item.car_id }}</td>
+                                <td style="color: chartreuse;">{{ item.PassengerNum }}</td>
+                                <td style="color: #FC8900;">{{ item.TravlledDistance }}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </v-card-text>
+                </div>
+            </div>
             <!-- 主体地图部分 -->
             <el-container style="padding-top: 0%;height: 98vh;">
                 <el-main style="width: 100%;height: 100%;padding: 0%;margin: 0%">
@@ -72,9 +105,11 @@
                     <el-progress :percentage="percentage" :stroke-width="12" striped striped-flow>
                         <span>{{ real_time }}</span>
                     </el-progress>
+                    <!--
                     <el-button class="toggle-button" @click="toggleVisibility">
                         {{ isHidden ? '显示所有内容' : '隐藏所有内容' }}
                     </el-button>
+                    -->
                 </el-footer>
             </el-container>
         </el-container>
@@ -526,6 +561,7 @@ onMounted(() => {
         map.addOverlay(label);
     }
     //高德地图初始化
+    //layer1 = new AMap.TileLayer.Satellite()
     gdmap = new AMap.Map("gdmap", {
         resizeEnable: true,
         center: [118.951742391866, 32.123405409006],
@@ -534,7 +570,9 @@ onMounted(() => {
         rotation: -0.7908261543741522,
         viewMode: '3D', //开启3D视图,默认为关闭
         buildingAnimation: true, //楼块出现是否带动画
-    })
+        //layers: new AMap.TileLayer.Satellite(),
+    });
+
 
     passedPolyline = new AMap.Polyline({
         map: gdmap,
@@ -635,6 +673,20 @@ onMounted(() => {
     height: 100%;
     position: relative;
 }
+.title-text {
+    /*设置标题渐变色效果*/
+    background: linear-gradient(to right, #56EEFE, #D579FC); /*设置渐变的方向从左到右 颜色从ff0000到ffff00*/
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    font-size: 3vh;
+}
+
+.v-card {
+  width: 100%;
+  height: 100%;
+}
 
 .hover-aside {
   position: absolute;
@@ -645,7 +697,7 @@ onMounted(() => {
   background-color: #080909; /* 半透明背景 */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   z-index: 999;
-  opacity: 0.8
+  opacity: 0.5
 }
 .page-title {
     display: flex;
@@ -661,6 +713,7 @@ onMounted(() => {
     padding: 0%;
     height: 5vh;
     width: 100%;
+    opacity:1
 }
 
 .timeline-container {
@@ -681,7 +734,8 @@ onMounted(() => {
 
 .card-header {
     display: flex;
-    justify-content: center;
+    justify-content:left;
+    margin: 2%;
 }
 
 .card-content {
@@ -689,27 +743,41 @@ onMounted(() => {
     margin-bottom: 1vh;
 }
 .box-card {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2%;
+    padding-top: 1vh;
+    width: 52vh;
+    height:32vh;
     position: absolute;
-    bottom: 20vh;
-    right: 3vh;
+    bottom: 9vh;
+    right: 1vh;
     z-index: 999;
-    background-image: url('src/assets/vertical_text.png');
-    
+    background-image: url('src/assets/bg-line.png');
+    background-size: cover;
 }
 .message-container {
     position: absolute;
     padding: 2%;
+    padding-top: 1vh;
+    padding-left: 3%;
     width: 52vh;
-    bottom: 5vh;
-    left: 3vh;
+    bottom: 9vh;
+    left: 1vh;
     z-index: 999;
     background-image: url('src/assets/bg-line.png');
     background-size:cover;
 }
 .gdmap-container {
+    padding: 2vh;
+    padding-left: 4vh;
     position: absolute;
-    top: 20vh;
-    right: 3vh;
+    top: 15vh;
+    right: 2vh;
     z-index: 999;
+    background-image: url('src/assets/bg-line.png');
+    background-size: cover;
+    background-repeat: no-repeat
 }
 </style>
