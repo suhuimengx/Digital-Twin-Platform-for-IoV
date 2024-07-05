@@ -45,29 +45,7 @@
                     <!-- <button @click="insert2">插入2</button> -->
                 </div>
             </div>
-            <!-- 左侧部分 
-            <el-aside v-if="IsShow" width="40vh"  class="hover-aside" style="margin-top: 0%;">
-                
 
-            </el-aside>
-            <div class="box-card">
-                    <el-card>
-                        <template #header>
-                            <div class="card-header">
-                                <span>智慧园区车辆状态</span>
-                               
-                            </div>
-                        </template>
-                        <div>
-                            <el-table :data="car_status">
-                                <el-table-column prop="car_id" label="车辆编号"></el-table-column>
-                                <el-table-column prop="PassengerNum" label="载客量"></el-table-column>
-                                <el-table-column prop="TravlledDistance" label="行驶里程/m"></el-table-column>
-                            </el-table>
-                        </div>
-                    </el-card>
-                </div>
-                -->
             <div class="box-card">
                 <div class="v-card">
                     <div>
@@ -92,7 +70,11 @@
                             </tr>
                             </tbody>
                         </table>
+                        <div class="chart">
+                        <v-chart :option="option" autoresize />
+                        </div>
                     </v-card-text>
+
                 </div>
             </div>
             <!-- 主体地图部分 -->
@@ -124,6 +106,70 @@ import { ElNotification, ElMessage } from 'element-plus'
 import axios from 'axios'
 import styleJson from '/src/assets/map_style3.json'
 import io from 'socket.io-client'
+
+//引入echarts
+import { use } from 'echarts/core';
+import { CanvasRenderer } from 'echarts/renderers';
+import { PieChart } from 'echarts/charts';
+import {
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+} from 'echarts/components';
+import VChart, { THEME_KEY } from 'vue-echarts';
+import { color } from 'echarts'
+use([
+  CanvasRenderer,
+  PieChart,
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+]);
+
+const passenger_num=ref(0)
+const no_passenger_num = ref(21)
+
+//饼状图的配置参数
+const option = ref({
+  title: {
+    text: '共乘情况',
+    left: '5%',
+    textStyle: {
+        color: '#03E3EE'
+    }
+  },
+  color:['#03E3EE', '#DAAC15', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'],
+  legend: {
+    orient: 'vertical',
+    left: 'left',
+    top:'middle',
+    data: ['载客人数', '空载人数'],
+    textStyle:{
+        color:'#03E3EE'
+    }
+  },
+  series: [
+    {
+      name: '共乘情况',
+      type: 'pie',
+      radius: '55%',
+      center: ['60%', '50%'],
+      data: [
+        { value: passenger_num, name: '载客人数' },
+        { value: no_passenger_num, name: '空载人数' },
+
+      ],
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)',
+        },
+      },
+    },
+  ],
+});
+
 
 const percentage = ref(0)
 const real_time = ref("7:20:00")
@@ -320,6 +366,7 @@ const SocketConnect = () => {
                 autoRotation: true,
             })
             car_status.value[1 - 1].PassengerNum = res.PassengerNum//更新本小车的载客量
+
             //实时估算更新车辆已行驶里程
             var distance_cnt = 0
             var Distance_Timer = setInterval(() => {
@@ -370,6 +417,8 @@ const SocketConnect = () => {
             //更新多车大地图图标位置
             MarkerCar_03.setPosition(new BMapGL.Point(temp_array[0][0], temp_array[0][1]))
         }
+        passenger_num=car_status.value[0].PassengerNum+car_status.value[1].PassengerNum+car_status.value[2].PassengerNum
+        no_passenger_num = 21 - passenger_num
         //车辆运行一半时间后，开始cover乘客图标
         setTimeout(() => {
             //单车地图cover图标
@@ -609,13 +658,13 @@ onMounted(() => {
         console.log("动画插件加载完毕")
     })
     MarkerCar_01 = new BMapGL.Marker(PointSets[0], {
-        icon: new BMapGL.Icon("src/assets/bus1.png", new BMapGL.Size(42, 42)),
+        icon: new BMapGL.Icon("src/assets/car_new_1.png", new BMapGL.Size(42, 42)),
     });
     MarkerCar_02 = new BMapGL.Marker(PointSets[0], {
-        icon: new BMapGL.Icon("src/assets/bus2.png", new BMapGL.Size(38, 38))
+        icon: new BMapGL.Icon("src/assets/car_new_2.png", new BMapGL.Size(42, 42))
     });
     MarkerCar_03 = new BMapGL.Marker(PointSets[0], {
-        icon: new BMapGL.Icon("src/assets/bus3.png", new BMapGL.Size(64, 64))
+        icon: new BMapGL.Icon("src/assets/car_new_3.png", new BMapGL.Size(42, 42))
     });
     map.addOverlay(MarkerCar_01)
     map.addOverlay(MarkerCar_02)
@@ -732,10 +781,15 @@ onMounted(() => {
 
 }
 
+.chart {
+    height: 20vh;
+    width: 100%;
+}
+
 .card-header {
     display: flex;
     justify-content:left;
-    margin: 2%;
+    margin-top: 2%;
 }
 
 .card-content {
@@ -761,8 +815,9 @@ onMounted(() => {
     position: absolute;
     padding: 2%;
     padding-top: 1vh;
-    padding-left: 3%;
-    width: 52vh;
+    padding-left: 4%;
+    padding-right: 4%;
+    width: 50vh;
     bottom: 9vh;
     left: 1vh;
     z-index: 999;

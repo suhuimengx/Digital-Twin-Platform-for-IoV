@@ -13,9 +13,16 @@ import App from "./App.vue";
 import "~/styles/index.scss";
 import "uno.css";
 
-// If you want to use ElMessage, import it.
-import "element-plus/theme-chalk/src/message.scss";
+import ECharts from 'vue-echarts'
+import 'echarts'
+
 
 const app = createApp(App);
+
+app.component('v-chart',ECharts);
+
+// 注册 ECharts 到全局属性
+//app.config.globalProperties.$echarts = echarts;
+
 // app.use(ElementPlus);
 app.mount("#app");
