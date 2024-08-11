@@ -1,10 +1,12 @@
-<template>
+<template class="dark">
     <div class="common-layout">
         
         <el-container class="maincontent">
+            <!-- 标题 -->
             <div class="page-title" v-if="IsShow">
             <text class="title-text" >智慧校园数字孪生平台</text>
             </div>
+            <!-- 左侧事件信息部分 -->
             <div class="message-container"> 
                     <div class="card-header">
                         <text style="text-align: left;font-size: medium;color: #32C5FF">事件信息</text>
@@ -32,6 +34,7 @@
                         </el-timeline>
                     </div>
             </div>
+            <!-- 司乘共显视角 -->
             <div class="gdmap-container">
                 <div class="card-header">
                         <text style="text-align: left;font-size: medium;color: #32C5FF">司乘共显视角</text>
@@ -45,7 +48,7 @@
                     <!-- <button @click="insert2">插入2</button> -->
                 </div>
             </div>
-
+            <!-- 右侧车辆状态部分 -->
             <div class="box-card">
                 <div class="v-card">
                     <div>
@@ -77,13 +80,13 @@
 
                 </div>
             </div>
-            <!-- 主体地图部分 -->
-            <el-container style="padding-top: 0%;height: 98vh;">
+            <!-- 主体地图部分 底层 -->
+            <el-container style="padding-top: 0%;height: 100vh">
                 <el-main style="width: 100%;height: 100%;padding: 0%;margin: 0%">
                     <div id="allmap" style="width: 100%;height: 100%;position: relative;"></div>
                 </el-main>
                 <!-- 底部时间轴 -->
-                <el-footer>
+                <el-footer style="padding: 0%;margin: 0%">
                     <el-progress :percentage="percentage" :stroke-width="12" striped striped-flow>
                         <span>{{ real_time }}</span>
                     </el-progress>
@@ -94,6 +97,10 @@
                     -->
                 </el-footer>
             </el-container>
+            <!--根据showrealdemand的真假选择性渲染-->
+            <div class="messagepop" v-if="showrealdemand">{{ real_time_demand }}</div>
+
+
         </el-container>
     </div>
 </template>
@@ -125,9 +132,10 @@ use([
   TooltipComponent,
   LegendComponent,
 ]);
-
+const real_time_demand = ref("")
+const showrealdemand = ref(false)
 const passenger_num=ref(0)
-const no_passenger_num = ref(21)
+const no_passenger_num = ref(21)//总容量为21人
 
 //饼状图的配置参数
 const option = ref({
@@ -225,17 +233,14 @@ const toggleVisibility = () => {
 }
 
 const test = () => {
-    let text = 'aaaa';
-    ElMessage({
-        message: h('p', { style: { fontSize: '30px' } }, [
-            h('span', null, "一个实时订单被分配给了"),
-            h("i", { style: 'color: teal' }, text)
-        ]),
-        type: 'warning',
-        offset: 600,
-        center: true,
-        duration: 8000,
-    })
+    let message1 = `一个实时订单被分配给了aaa号小车`
+    real_time_demand.value = message1;
+    showrealdemand.value = true;
+    setTimeout(() => {
+            showrealdemand.value = false;
+        }, 4000)
+    passenger_num.value= 0.01
+    no_passenger_num.value = 21 - passenger_num.value
 }
 
 const SocketConnect = () => {
@@ -276,6 +281,7 @@ const SocketConnect = () => {
                         MarkerCar_01.getLabel().remove()
                 }, 500);
             }
+        
         }
         else if (carId == 2) {
             //更新园区状态表
@@ -342,6 +348,8 @@ const SocketConnect = () => {
                 }, 500);
             }
         }
+        passenger_num.value = car_status.value[0].PassengerNum + car_status.value[1].PassengerNum + car_status.value[2].PassengerNum
+        no_passenger_num.value = 21 - passenger_num.value
     })
     //定时捕获地图中心位置
     setInterval(() => {
@@ -417,8 +425,13 @@ const SocketConnect = () => {
             //更新多车大地图图标位置
             MarkerCar_03.setPosition(new BMapGL.Point(temp_array[0][0], temp_array[0][1]))
         }
-        passenger_num=car_status.value[0].PassengerNum+car_status.value[1].PassengerNum+car_status.value[2].PassengerNum
-        no_passenger_num = 21 - passenger_num
+        passenger_num.value = car_status.value[0].PassengerNum + car_status.value[1].PassengerNum + car_status.value[2].PassengerNum
+        no_passenger_num.value = 21 - passenger_num.value
+        //避免饼状图数据为0不重新渲染
+        if(passenger_num.value==0){
+            passenger_num.value= 0.01
+            no_passenger_num.value = 21 - passenger_num.value
+        }
         //车辆运行一半时间后，开始cover乘客图标
         setTimeout(() => {
             //单车地图cover图标
@@ -482,6 +495,8 @@ const SocketConnect = () => {
 
     })
     socket.on('send_message_realtimeDemand', (res) => {
+        console.log("收到实时订单")
+        console.log(res)
         let carId = res.car_id;
         let origin_point = PointSets[res.originId];
         let dest_point = PointSets[res.destId];
@@ -520,16 +535,13 @@ const SocketConnect = () => {
             map.removeOverlay(dest_passenger);
         }, 4000)
         let message = `${carId}号小车`;
-        ElMessage({
-            message: h('p', { style: { fontSize: '30px' } }, [
-                h('span', null, "一个实时订单被分配给了"),
-                h("i", { style: 'color: teal' }, message)
-            ]),
-            type: 'warning',
-            offset: 600,
-            center: true,
-            duration: 8000,
-        })
+        let message1 = `一个实时订单被分配给了${carId}号小车`
+        real_time_demand.value = message1;
+        showrealdemand.value = true;
+        setTimeout(() => {
+            showrealdemand.value = false;
+        }, 5000)
+        
     })
     socket.on('send_message_location', (res) => {
         let prevPoint = null
@@ -619,6 +631,7 @@ onMounted(() => {
         rotation: -0.7908261543741522,
         viewMode: '3D', //开启3D视图,默认为关闭
         buildingAnimation: true, //楼块出现是否带动画
+        showLabel:false
         //layers: new AMap.TileLayer.Satellite(),
     });
 
@@ -677,9 +690,9 @@ onMounted(() => {
 #allmap {
     width: 100%;
     height: 100%;
-    position: relative;
-    z-index: 10;
-    /* overflow: hidden; */
+   /* position: relative;
+    z-index: 1;
+     overflow: hidden; */
 }
 /* < !--去掉文字 --> */
 .BMap_cpyCtrl {
@@ -689,6 +702,17 @@ onMounted(() => {
 /* < !--去掉LOGO --> */
 .anchorBL {
     display: none;
+}
+.messagepop {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #DAAC15;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 999;
 }
 
 .amap-logo {
@@ -720,7 +744,7 @@ onMounted(() => {
     padding: 0%;
     width: 100%;
     height: 100%;
-    position: relative;
+    /*position: relative;*/
 }
 .title-text {
     /*设置标题渐变色效果*/
@@ -737,17 +761,6 @@ onMounted(() => {
   height: 100%;
 }
 
-.hover-aside {
-  position: absolute;
-  top: 0;
-  left: 50;
-  width: 40vh;
-  height: 100%;
-  background-color: #080909; /* 半透明背景 */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  z-index: 999;
-  opacity: 0.5
-}
 .page-title {
     display: flex;
     position: absolute;
@@ -763,6 +776,22 @@ onMounted(() => {
     height: 5vh;
     width: 100%;
     opacity:1
+}
+
+
+.view-controler {
+    display: flex;
+    position: absolute;
+    flex-direction: column;
+    padding: 2vh;
+    bottom: 10vh;
+    left: 75vh;
+    width: 40vh;
+    height: 20vh;
+    z-index: 999;
+    background-image: url('src/assets/vertical5.png');
+    background-size: cover;
+    background-repeat: no-repeat
 }
 
 .timeline-container {
@@ -790,6 +819,13 @@ onMounted(() => {
     display: flex;
     justify-content:left;
     margin-top: 2%;
+}
+
+.cardtitle{
+    justify-content: center;
+    font-size: 20px;
+    color: #32C5FF;
+
 }
 
 .card-content {
@@ -835,4 +871,5 @@ onMounted(() => {
     background-size: cover;
     background-repeat: no-repeat
 }
+
 </style>

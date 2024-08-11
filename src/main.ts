@@ -12,9 +12,10 @@ import App from "./App.vue";
 
 import "~/styles/index.scss";
 import "uno.css";
-
 import ECharts from 'vue-echarts'
 import 'echarts'
+// main.ts
+import 'element-plus/theme-chalk/dark/css-vars.css'
 
 
 const app = createApp(App);

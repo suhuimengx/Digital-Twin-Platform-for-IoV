@@ -1,4 +1,4 @@
-<template>
+<template class="dark">
   <el-config-provider namespace="ep">
     <div class="flex main-container">
       <!--
